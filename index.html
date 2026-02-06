@@ -795,7 +795,13 @@ function renderTopControls(){
     const b = document.createElement("button");
     b.className = "segBtn" + (state.size===s ? " active":"");
     b.textContent = s;
-    b.onclick = ()=>{ state.size=s; ensureRadioDefaults(); save(); rerenderAll(false); };
+    b.onclick = ()=>{
+  state.size = s;
+  ensureRadioDefaults();
+  save();
+  renderTopControls();   // 🔥 이 줄이 핵심
+  rerenderAll(false);
+};
     sizeSeg.appendChild(b);
   });
 
@@ -1731,3 +1737,4 @@ boot();
 </script>
 </body>
 </html>
+
