@@ -1,0 +1,1733 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>원가 계산기</title>
+
+  <!-- ✅ 엑셀 업로드용 (SheetJS) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f5f6f8;
+      --card:#ffffff;
+      --line:#e9ebef;
+      --text:#111;
+      --sub:#6b7280;
+      --brand:#10cfc9; /* 배민 느낌 민트 */
+      --brand2:#0fbab5;
+      --danger:#e11d48;
+      --shadow:0 8px 24px rgba(0,0,0,.06);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background:var(--bg); color:var(--text);
+    }
+    .wrap{max-width:980px; margin:0 auto; padding:14px 12px 96px}
+
+    .topbar{
+      position:sticky; top:0; z-index:50;
+      background:rgba(245,246,248,.85); backdrop-filter:saturate(1.2) blur(10px);
+      padding:10px 0 12px;
+    }
+    .titleRow{display:flex; gap:10px; align-items:center; padding:0 12px}
+    .title{font-weight:900; font-size:18px}
+    .pillBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .pillBtn.on{background:#111; color:#fff; border-color:#111;}
+    .pillBtn.brand{background:#e6fffe; border-color:#c8fffd; color:#003b39;}
+    .pillBtn.brand.on{background:#003b39; border-color:#003b39; color:#fff;}
+
+    .controls{
+      display:flex; gap:8px; flex-wrap:wrap;
+      padding:10px 12px 0;
+    }
+    select, input[type="text"], input[type="number"]{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      background:#fff;
+      font-weight:800;
+      outline:none;
+    }
+    .sizeSeg{display:flex; gap:6px; align-items:center}
+    .segBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:10px 14px;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .segBtn.active{border:2px solid var(--brand2); background:#e6fffe}
+    .ghostBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .summaryGrid{
+      padding:12px;
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap:10px;
+    }
+    @media (max-width:860px){
+      .summaryGrid{grid-template-columns: repeat(2, minmax(0,1fr));}
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .sumCard{padding:12px}
+    .sumTitle{font-size:12px; color:var(--sub); font-weight:900}
+    .sumValue{margin-top:6px; font-size:18px; font-weight:1000}
+    .sumValue.bad{color:var(--danger)}
+
+    .feeRow{
+      padding:0 12px 12px;
+      display:flex; gap:12px; flex-wrap:wrap;
+      color:#4b5563; font-size:12px; font-weight:800;
+    }
+
+    .section{margin-top:12px; overflow:hidden;}
+    .secHead{padding:14px 14px 10px; border-bottom:1px solid var(--line);}
+    .secTitle{font-weight:1000}
+    .secSub{margin-top:4px; font-size:12px; color:var(--sub); font-weight:800}
+    .optList{padding:0}
+    .optRow{
+      display:grid;
+      grid-template-columns: 28px 1fr auto;
+      gap:10px;
+      align-items:center;
+      padding:12px 14px;
+      border-bottom:1px solid #f0f2f6;
+    }
+    .optRow:last-child{border-bottom:0}
+    .optName{font-weight:1000}
+    .optMeta{margin-top:3px; font-size:12px; color:var(--sub); font-weight:800}
+    .rightMini{min-width:120px; display:flex; justify-content:flex-end; align-items:center}
+    input[type="radio"], input[type="checkbox"]{width:18px; height:18px}
+
+    .qty{
+      display:flex; align-items:center; gap:8px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:6px 8px;
+      background:#fff;
+    }
+    .qty button{
+      width:28px; height:28px; border-radius:10px;
+      border:1px solid var(--line);
+      background:#fff;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .qty .n{min-width:22px; text-align:center; font-weight:1000}
+
+    .adminBox{
+      margin:12px;
+      padding:12px;
+      background:#f9fafb;
+      border:1px solid var(--line);
+      border-radius:14px;
+    }
+
+    .tableCard{margin-top:12px; overflow:hidden}
+    .tableHead{padding:12px 14px; border-bottom:1px solid var(--line); font-weight:1000}
+    .tableBody{padding:12px}
+
+    .rowBox{
+      display:grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap:10px;
+      align-items:center;
+      padding:12px;
+      border:1px solid #f0f2f6;
+      border-radius:14px;
+      margin-bottom:8px;
+      background:#fff;
+    }
+    .rowBox:last-child{margin-bottom:0}
+    .profit{font-weight:1000}
+    .profit.pos{color:var(--brand2)}
+    .profit.neg{color:var(--danger)}
+    .divider{width:1px; height:36px; background:var(--line)}
+
+    .hint{margin-top:12px; color:#6b7280; font-size:12px; line-height:1.55}
+
+    .bottomBar{
+      position:fixed; left:0; right:0; bottom:0; z-index:60;
+      padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+      background:rgba(245,246,248,.92);
+      border-top:1px solid rgba(233,235,239,.8);
+      backdrop-filter:saturate(1.2) blur(10px);
+    }
+    .bottomInner{
+      max-width:980px; margin:0 auto;
+      display:flex; gap:10px; align-items:center;
+    }
+    .cta{
+      margin-left:auto;
+      background:var(--brand);
+      color:#003b39;
+      border:0;
+      border-radius:14px;
+      padding:14px 16px;
+      font-weight:1000;
+      cursor:pointer;
+      min-width:220px;
+      box-shadow:0 10px 26px rgba(16,207,201,.22);
+    }
+    .cta small{display:block; font-size:11px; font-weight:1000; opacity:.75}
+    .cta strong{display:block; font-size:18px; font-weight:1100}
+    .badge{display:inline-flex; align-items:center; gap:6px}
+    .dot{width:8px; height:8px; border-radius:50%; background:var(--brand2)}
+    .muted{color:var(--sub); font-size:12px; font-weight:900}
+
+    /* ===== 메뉴 선택 카드 UI (가로 스크롤) ===== */
+    .menuPickerCard{padding:12px}
+    .menuPickTop{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .menuSearch{flex:1; min-width:180px}
+    .menuStrip{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      overflow-x:auto;
+      padding-bottom:6px;
+      scroll-snap-type:x mandatory;
+    }
+    .menuStrip::-webkit-scrollbar{height:8px}
+    .menuStrip::-webkit-scrollbar-thumb{background:#e8edf2; border-radius:999px}
+    .menuCard{
+      min-width:220px;
+      max-width:260px;
+      flex:0 0 auto;
+      scroll-snap-align:start;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:16px;
+      padding:12px;
+      box-shadow: var(--shadow);
+      cursor:pointer;
+    }
+    .menuCard.on{border:2px solid var(--brand2); background:#e6fffe}
+    .menuCard .name{font-weight:1100}
+    .menuCard .sub{margin-top:6px; font-size:12px; color:var(--sub); font-weight:900; line-height:1.4}
+    .chipRow{margin-top:10px; display:flex; gap:6px; flex-wrap:wrap}
+    .chip{font-size:11px; font-weight:1000; padding:6px 8px; border-radius:999px; border:1px solid var(--line); background:#fff}
+    .chip.good{border-color:#c8fffd; background:#f0fffe; color:#003b39}
+
+    /* ===== 관리자 페이지 ===== */
+    .adminTabs{display:flex; gap:8px; flex-wrap:wrap; padding:12px}
+    .tabBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:8px 12px;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .tabBtn.on{background:#111; color:#fff; border-color:#111;}
+    .adminPanel{padding:12px}
+    .adminGrid2{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+    @media (max-width:700px){ .adminGrid2{grid-template-columns:1fr;} }
+
+    .miniBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .dangerBtn{border-color:#ffd1dc; background:#fff5f7; color:#b42318;}
+
+    .listCard{padding:12px; margin-bottom:10px}
+    .listHead{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .listHead .left{flex:1}
+    .listHead .ttl{font-weight:1100}
+    .listHead .meta{margin-top:4px; font-size:12px; color:var(--sub); font-weight:900}
+    .listActions{display:flex; gap:8px; flex-wrap:wrap}
+
+    .sheetRow{
+      display:grid;
+      grid-template-columns: 1.3fr .8fr .8fr .8fr auto;
+      gap:8px;
+      align-items:center;
+      margin-top:8px;
+    }
+    .sheetRow.header{margin-top:0; color:#6b7280; font-size:12px; font-weight:1000}
+    .sheetRow input, .sheetRow select{width:100%}
+
+    .optSheetRow{
+      display:grid;
+      grid-template-columns: 1.3fr 1fr .8fr .8fr .8fr .8fr auto auto;
+      gap:8px;
+      align-items:center;
+      margin-top:8px;
+    }
+    @media (max-width:860px){
+      .optSheetRow{grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px}
+      .optSheetRow .hideSm{display:none}
+    }
+
+    /* ===== 모달 ===== */
+    .modalBack{
+      position:fixed; inset:0; z-index:200;
+      background:rgba(0,0,0,.35);
+      display:flex; align-items:flex-end; justify-content:center;
+      padding:12px;
+    }
+    .modal{
+      width:min(980px, 100%);
+      background:#fff;
+      border-radius:18px;
+      border:1px solid var(--line);
+      box-shadow:0 24px 80px rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .modalHead{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex; gap:8px; align-items:center;
+    }
+    .modalTitle{font-weight:1100}
+    .modalBody{padding:12px}
+    .sizeBtns{display:flex; gap:6px; flex-wrap:wrap}
+    .sizeBtns button{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:10px 14px;
+      font-weight:1100;
+      cursor:pointer;
+    }
+    .sizeBtns button.on{border:2px solid var(--brand2); background:#e6fffe}
+    .recipeRow{
+      display:grid;
+      grid-template-columns: 1.2fr .6fr .7fr auto;
+      gap:8px;
+      align-items:center;
+      margin-top:8px;
+    }
+    @media (max-width:640px){ .recipeRow{grid-template-columns: 1fr 1fr; } }
+
+    /* ✅ 요약 영역 접기/펼치기 */
+    .summaryWrap{
+      overflow:hidden;
+      transition: max-height .35s ease, opacity .25s ease;
+      max-height:500px;
+      opacity:1;
+    }
+    .summaryWrap.closed{
+      max-height:0;
+      opacity:0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="wrap" style="padding-bottom:0">
+      <div class="card">
+        <div class="titleRow" style="padding:12px 14px">
+          <div>
+            <div class="title" id="menuTitle">원가 계산기</div>
+            <div class="muted">메뉴/레시피/단가/옵션/플랫폼까지 한 번에</div>
+          </div>
+
+          <!-- 상단 퀵버튼 (고정) -->
+          <button class="pillBtn brand" id="navMenuBtn">메뉴선택</button>
+          <button class="pillBtn" id="navAdminBtn">관리자</button>
+        </div>
+
+        <!-- 메뉴 선택 카드 (메뉴 페이지에서만 표시) -->
+        <div class="menuPickerCard" id="menuPickerCard" style="display:none">
+          <div class="menuPickTop">
+            <input class="menuSearch" type="text" id="menuSearch" placeholder="메뉴 검색 (한 글자만 일치해도 OK)" />
+            <div class="muted" id="menuPickMeta"></div>
+          </div>
+          <div class="menuStrip" id="menuStrip"></div>
+        </div>
+
+        <!-- 메뉴 계산 UI (메뉴 페이지에서만 표시) -->
+        <div id="menuCalcArea" style="display:none">
+          <div class="controls">
+            <select id="platformSel"></select>
+            <div class="sizeSeg" id="sizeSeg"></div>
+            <select id="couponSel"></select>
+            <select id="extraDeliverySel"></select>
+            <button class="ghostBtn" id="resetBtn">초기화</button>
+          </div>
+
+          <!-- ✅ 요약 접기/펼치기 버튼 -->
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px 0">
+            <div class="muted" style="font-weight:900">원가 · 수수료</div>
+            <button id="toggleSummaryBtn" class="pillBtn">∨</button>
+          </div>
+
+          <div class="summaryWrap open" id="summaryWrap">
+            <div class="summaryGrid">
+              <div class="sumCard card">
+                <div class="sumTitle">총 결제금액(쿠폰 전)</div>
+                <div class="sumValue" id="grossPrice">-</div>
+              </div>
+              <div class="sumCard card">
+                <div class="sumTitle">실매출(쿠폰 적용)</div>
+                <div class="sumValue" id="netRevenue">-</div>
+              </div>
+              <div class="sumCard card">
+                <div class="sumTitle">총 원가</div>
+                <div class="sumValue" id="totalCost">-</div>
+              </div>
+              <div class="sumCard card">
+                <div class="sumTitle" id="profitTitle">실마진</div>
+                <div class="sumValue" id="profit">-</div>
+              </div>
+            </div>
+
+            <div class="feeRow">
+              <span>플랫폼수수료: <b id="platformFee">-</b></span>
+              <span>카드수수료: <b id="cardFee">-</b></span>
+              <span>배달비: <b id="deliveryFee">-</b></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 메뉴 페이지 -->
+  <div class="wrap" id="pageMenu" style="display:none">
+    <div id="sections"></div>
+
+    <div class="card tableCard">
+      <div class="tableHead">선택 옵션 손익 (옵션 단독)</div>
+      <div class="tableBody" id="profitRows"></div>
+    </div>
+
+    <div class="hint">
+      - 수수료는 <b>쿠폰 적용된 실매출</b> 기준으로 계산됨<br/>
+      - 데이터는 브라우저에 저장됨(같은 기기/브라우저에서 유지)<br/>
+      - “메뉴/레시피/단가/옵션”은 관리자에서 설정 후 메뉴선택에서 바로 사용
+    </div>
+  </div>
+
+  <!-- 관리자 페이지 -->
+  <div class="wrap" id="pageAdmin" style="display:none">
+    <div class="card">
+
+      <!-- ✅ 엑셀 업로드 (관리자 공통) -->
+      <div class="adminBox" style="margin:12px 12px 0">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+          <button class="miniBtn" id="excelUploadBtn">엑셀 업로드</button>
+          <input type="file" id="excelFile" accept=".xlsx" hidden />
+          <div class="muted">Menus / Ingredients / Recipes / Options 시트 자동 반영</div>
+        </div>
+        <div class="hint" style="margin-top:10px">
+          * 시트명 고정: <b>Menus</b>, <b>Ingredients</b>, <b>Recipes</b>, <b>Options</b><br/>
+          * 업로드 즉시 메뉴/레시피/재료단가/옵션 설정이 저장되고 메뉴선택 계산에 반영됨
+        </div>
+      </div>
+
+      <div class="adminTabs">
+        <button class="tabBtn on" id="tabMenus">메뉴 설정</button>
+        <button class="tabBtn" id="tabPlatform">플랫폼 설정</button>
+        <button class="tabBtn" id="tabOptions">옵션 설정</button>
+        <button class="tabBtn" id="tabIngredients">단가 수정</button>
+      </div>
+      <div class="adminPanel" id="adminPanel"></div>
+    </div>
+  </div>
+
+  <div class="bottomBar" id="bottomBar" style="display:none">
+    <div class="bottomInner">
+      <div class="badge">
+        <span class="dot"></span>
+        <span class="muted">옵션 선택 → 자동 계산</span>
+      </div>
+      <button class="cta" id="ctaBtn" type="button">
+        <small>현재 실마진</small>
+        <strong id="ctaProfit">-</strong>
+      </button>
+    </div>
+  </div>
+
+<script>
+/** =========================
+ *  Helpers
+ *  ========================= */
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const toNumber = (v, fallback=0) => {
+  const n = (typeof v === 'number') ? v : Number(String(v).replace(/,/g,''));
+  return Number.isFinite(n) ? n : fallback;
+};
+const won = (n) => (Math.round(n)).toLocaleString('ko-KR') + '원';
+const pct = (n) => (Math.round(n*10)/10).toFixed(1) + '%';
+const uid = () => Math.random().toString(36).slice(2,10);
+
+const LS = {
+  get(key, fallback){
+    try{ const raw = localStorage.getItem(key); if(!raw) return fallback; return JSON.parse(raw); }
+    catch{ return fallback; }
+  },
+  set(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch{}
+  }
+};
+
+/** =========================
+ *  Data model
+ *  ========================= */
+const SizeKeys = ['S','M','L'];
+
+// 기본 플랫폼 프리셋(원하면 관리자에서 수정)
+const DEFAULT_PLATFORMS = {
+  BAEMIN_DELIVERY: { name:'배민', platformFeeRate:0.0787, cardFeeRate:0.03, deliveryFee:3400 },
+  BAEMIN_STORE:    { name:'배민 가게배달', platformFeeRate:0.0748, cardFeeRate:0.03, deliveryFee:3400 },
+  BAEMIN_PICKUP:   { name:'배민 포장', platformFeeRate:0.0748, cardFeeRate:0.03, deliveryFee:0 },
+  YOGIYO_DELIVERY: { name:'요기요', platformFeeRate:0.0737, cardFeeRate:0.03, deliveryFee:3190 },
+  YOGIYO_STORE:    { name:'요기요 가게배달', platformFeeRate:0.1067, cardFeeRate:0.03, deliveryFee:3190 },
+  YOGIYO_PICKUP:   { name:'요기요 포장', platformFeeRate:0.0847, cardFeeRate:0.03, deliveryFee:0 },
+  COUPANG_DELIVERY:{ name:'쿠팡이츠', platformFeeRate:0.0858, cardFeeRate:0.03, deliveryFee:3730 },
+  COUPANG_PICKUP:  { name:'쿠팡 포장', platformFeeRate:0.0858, cardFeeRate:0.03, deliveryFee:0 },
+};
+
+// 옵션 그룹(고정: UI 유지)
+const DEFAULT_GROUPS = [
+  { id:"REVIEW1", title:"리뷰이벤트1", subtitle:"필수", kind:"radio" },
+  { id:"REVIEW2", title:"리뷰이벤트2", subtitle:"필수", kind:"radio" },
+  { id:"PICKLE",  title:"피클선택(기본미제공)", subtitle:"필수", kind:"radio" },
+  { id:"SAUCE_QTY", title:"소스 추가선택(기본미제공)", subtitle:"최대 4개", kind:"check_qty" },
+  { id:"SAUCE_AMOUNT", title:"피자 소스양 선택", subtitle:"필수", kind:"radio" },
+  { id:"DOUGH",   title:"도우 선택", subtitle:"필수", kind:"radio" },
+  { id:"EDGE",    title:"엣지 선택", subtitle:"필수", kind:"radio" },
+  { id:"TOPPING", title:"토핑 추가선택", subtitle:"최대 2개", kind:"check_limit", maxSelect:2 },
+  { id:"SIDE",    title:"사이드메뉴 추가선택", subtitle:"최대 1개", kind:"check_limit", maxSelect:1 },
+  { id:"DRINK",   title:"음료 추가선택", subtitle:"최대 1개", kind:"check_limit", maxSelect:1 },
+];
+
+const DEFAULT_OPTIONS = [
+  // REVIEW1
+  { id:"rv1_next", groupId:"REVIEW1", type:"radio", name:"다음에 참여할게요", priceDelta:0, costDelta:0, enabled:true },
+  { id:"rv1_mozz", groupId:"REVIEW1", type:"radio", name:"1. 모짜렐라 치즈 추가", priceDelta:0, costDelta:0, enabled:true },
+  { id:"rv1_cheeseball2", groupId:"REVIEW1", type:"radio", name:"2. 치즈볼 2알", priceDelta:500, costDelta:0, enabled:true },
+  { id:"rv1_edge_cheese", groupId:"REVIEW1", type:"radio", name:"8. 치즈크러스트 추가", priceDelta:1000, costDelta:0, enabled:true },
+
+  // REVIEW2
+  { id:"rv2_next", groupId:"REVIEW2", type:"radio", name:"다음에 참여할게요", priceDelta:0, costDelta:0, enabled:true },
+  { id:"rv2_pickle", groupId:"REVIEW2", type:"radio", name:"1. 피클+", priceDelta:0, costDelta:0, enabled:true },
+  { id:"rv2_garlic", groupId:"REVIEW2", type:"radio", name:"2. 갈릭소스+", priceDelta:0, costDelta:0, enabled:true },
+
+  // PICKLE
+  { id:"pickle_x", groupId:"PICKLE", type:"radio", name:"피클X", priceDelta:0, costDelta:0, enabled:true },
+  { id:"pickle_o", groupId:"PICKLE", type:"radio", name:"피클O", priceDelta:500, costDelta:0, enabled:true },
+
+  // SAUCE_AMOUNT
+  { id:"sauce_amt_normal", groupId:"SAUCE_AMOUNT", type:"radio", name:"보통이요", priceDelta:0, costDelta:0, enabled:true },
+  { id:"sauce_amt_less", groupId:"SAUCE_AMOUNT", type:"radio", name:"적게 (싱거울 수 있습니다)", priceDelta:0, costDelta:0, enabled:true },
+  { id:"sauce_amt_more", groupId:"SAUCE_AMOUNT", type:"radio", name:"많이 (짤 수 있습니다)", priceDelta:0, costDelta:0, enabled:true },
+
+  // DOUGH
+  { id:"dough_milk", groupId:"DOUGH", type:"radio", name:"우유도우(쫄깃도우)", priceDelta:0, costDelta:0, enabled:true },
+  { id:"dough_black", groupId:"DOUGH", type:"radio", name:"담백한 흑미도우(얇은도우)", priceDelta:0, costDelta:0, enabled:true },
+
+  // EDGE
+  { id:"edge_ori", groupId:"EDGE", type:"radio", name:"오리지널", priceDelta:0, costDelta:0, enabled:true },
+  { id:"edge_cheese", groupId:"EDGE", type:"radio", name:"치즈크러스트(빵안에 치즈)", priceDelta:2500, costDelta:0, enabled:true },
+  { id:"edge_sweet", groupId:"EDGE", type:"radio", name:"고구마치즈크러스트(빵안에 고구마무스+치즈)", priceDelta:3000, costDelta:0, enabled:true },
+
+  // TOPPING (max 2)
+  { id:"top_cheese", groupId:"TOPPING", type:"check", name:"치즈 추가", priceDelta:3000, costDelta:0, enabled:true },
+  { id:"top_pepperoni", groupId:"TOPPING", type:"check", name:"페퍼로니 추가", priceDelta:2000, costDelta:0, enabled:true },
+  { id:"top_onion", groupId:"TOPPING", type:"check", name:"양파 추가", priceDelta:1000, costDelta:0, enabled:true },
+
+  // SIDE (max 1)
+  { id:"side_pasta", groupId:"SIDE", type:"check", name:"치즈빨오븐파스타 추가", priceDelta:5900, costDelta:0, enabled:true },
+  { id:"side_fries", groupId:"SIDE", type:"check", name:"케이준감자튀김 추가", priceDelta:3900, costDelta:0, enabled:true },
+
+  // DRINK (max 1)
+  { id:"drink_coke500", groupId:"DRINK", type:"check", name:"콜라 500ml", priceDelta:2000, costDelta:0, enabled:true },
+  { id:"drink_coke125", groupId:"DRINK", type:"check", name:"콜라 1.25L", priceDelta:2500, costDelta:0, enabled:true },
+
+  // SAUCE_QTY (max 4)
+  { id:"sq_pickle", groupId:"SAUCE_QTY", type:"check_qty", name:"피클 추가", priceDelta:500, costDelta:0, maxQty:4, enabled:true },
+  { id:"sq_garlic", groupId:"SAUCE_QTY", type:"check_qty", name:"갈릭소스 추가", priceDelta:500, costDelta:0, maxQty:4, enabled:true },
+  { id:"sq_hot", groupId:"SAUCE_QTY", type:"check_qty", name:"핫소스 추가", priceDelta:200, costDelta:0, maxQty:4, enabled:true },
+];
+
+const DEFAULT_CFG = {
+  adminPin: "0000",
+  platforms: DEFAULT_PLATFORMS,
+  optionGroups: DEFAULT_GROUPS,
+  options: DEFAULT_OPTIONS,
+  ingredients: [
+    { id: uid(), name:"모짜렐라", totalQty:1000, buyPrice:8000 },
+    { id: uid(), name:"페퍼로니", totalQty:1000, buyPrice:12000 },
+  ],
+  menus: [
+    {
+      id: uid(),
+      name: "충성콤비네이션",
+      sizes: {
+        S:{ price:14900 },
+        M:{ price:19900 },
+        L:{ price:23900 },
+      },
+      recipes: {
+        S: [{ing:"모짜렐라", qty:120},{ing:"페퍼로니", qty:40}],
+        M: [{ing:"모짜렐라", qty:120},{ing:"페퍼로니", qty:40}],
+        L: [{ing:"모짜렐라", qty:120},{ing:"페퍼로니", qty:40}],
+      }
+    }
+  ]
+};
+
+const KEYS = {
+  cfg: "cost_app_cfg_final_v1",
+  state: "cost_app_state_final_v1"
+};
+
+let cfg = LS.get(KEYS.cfg, DEFAULT_CFG);
+let state = LS.get(KEYS.state, {
+  page: "menu",
+  adminOn: false,
+  selectedMenuId: (cfg.menus[0]?.id || null),
+
+  platformKey: "BAEMIN_DELIVERY",
+  size: "M",
+  coupon: 0,
+  storeDeliveryExtra: 0,
+
+  radio: {},
+  checked: {},
+  qty: {}
+});
+
+function save(){ LS.set(KEYS.cfg, cfg); LS.set(KEYS.state, state); }
+
+/** =========================
+ *  DOM refs
+ *  ========================= */
+const $ = (id)=>document.getElementById(id);
+
+const navMenuBtn = $("navMenuBtn");
+const navAdminBtn = $("navAdminBtn");
+
+const menuPickerCard = $("menuPickerCard");
+const menuCalcArea = $("menuCalcArea");
+const pageMenu = $("pageMenu");
+const pageAdmin = $("pageAdmin");
+const bottomBar = $("bottomBar");
+
+const menuStrip = $("menuStrip");
+const menuSearch = $("menuSearch");
+const menuPickMeta = $("menuPickMeta");
+
+const platformSel = $("platformSel");
+const sizeSeg = $("sizeSeg");
+const couponSel = $("couponSel");
+const extraDeliverySel = $("extraDeliverySel");
+const resetBtn = $("resetBtn");
+
+const sections = $("sections");
+const profitRows = $("profitRows");
+
+const adminPanel = $("adminPanel");
+const tabMenus = $("tabMenus");
+const tabPlatform = $("tabPlatform");
+const tabOptions = $("tabOptions");
+const tabIngredients = $("tabIngredients");
+
+/** =========================
+ *  Derived helpers
+ *  ========================= */
+function getSelectedMenu(){
+  return cfg.menus.find(m=>m.id===state.selectedMenuId) || cfg.menus[0] || null;
+}
+function unitPriceByName(name){
+  const it = cfg.ingredients.find(x=>x.name===name);
+  if(!it) return 0;
+  const total = toNumber(it.totalQty,0);
+  const buy = toNumber(it.buyPrice,0);
+  return total>0 ? (buy/total) : 0;
+}
+function calcRecipeCost(menu, size){
+  if(!menu) return 0;
+  const rows = (menu.recipes?.[size] || []);
+  return rows.reduce((s,r)=> s + (toNumber(r.qty,0) * unitPriceByName(r.ing)), 0);
+}
+function getGroupMeta(groupId){
+  return cfg.optionGroups.find(g=>g.id===groupId);
+}
+function getOptionsByGroup(groupId){
+  return cfg.options.filter(o=>o.groupId===groupId && o.enabled!==false);
+}
+
+/** =========================
+ *  Page navigation
+ *  ========================= */
+function setPage(p){
+  state.page = p;
+
+  navMenuBtn.className = "pillBtn brand" + (p==="menu" ? " on":"");
+  navAdminBtn.className = "pillBtn" + (p==="admin" ? " on":"");
+
+  const isMenu = (p==="menu");
+  menuPickerCard.style.display = isMenu ? "block" : "none";
+  menuCalcArea.style.display = isMenu ? "block" : "none";
+  pageMenu.style.display = isMenu ? "block" : "none";
+  bottomBar.style.display = isMenu ? "block" : "none";
+  pageAdmin.style.display = isMenu ? "none" : "block";
+
+  if(isMenu){
+    rerenderAll(true);
+  }else{
+    if(!state.adminOn){
+      const pin = prompt("관리자 PIN 입력 (기본 0000)");
+      if(pin !== (cfg.adminPin || "0000")){
+        alert("PIN이 틀렸습니다.");
+        state.page = "menu";
+        save();
+        setPage("menu");
+        return;
+      }
+      state.adminOn = true;
+      save();
+    }
+    openAdminTab("menus");
+  }
+
+  save();
+}
+
+navMenuBtn.addEventListener("click", ()=>setPage("menu"));
+navAdminBtn.addEventListener("click", ()=>setPage("admin"));
+
+/** =========================
+ *  Menu picker (cards + search)
+ *  ========================= */
+function fuzzyMatch(name, q){
+  q = (q||"").trim();
+  if(!q) return true;
+  const n = String(name||"");
+  if(n.includes(q)) return true;
+  const chars = Array.from(q);
+  return chars.some(ch => n.includes(ch));
+}
+
+function renderMenuPicker(){
+  const q = (menuSearch.value||"").trim();
+  const list = cfg.menus.filter(m => fuzzyMatch(m.name, q));
+  menuPickMeta.textContent = `총 ${cfg.menus.length}개 · 검색결과 ${list.length}개`;
+
+  menuStrip.innerHTML = "";
+  list.forEach(m=>{
+    const card = document.createElement("div");
+    card.className = "menuCard" + (m.id===state.selectedMenuId ? " on":"");
+    const sCost = calcRecipeCost(m,"S");
+    const mCost = calcRecipeCost(m,"M");
+    const lCost = calcRecipeCost(m,"L");
+    card.innerHTML = `
+      <div class="name">${m.name}</div>
+      <div class="sub">
+        S ${won(m.sizes.S.price)} · 원가 ${won(sCost)}<br/>
+        M ${won(m.sizes.M.price)} · 원가 ${won(mCost)}<br/>
+        L ${won(m.sizes.L.price)} · 원가 ${won(lCost)}
+      </div>
+      <div class="chipRow">
+        <span class="chip good">선택</span>
+        <span class="chip">레시피 연동</span>
+      </div>
+    `;
+    card.onclick = ()=>{
+      state.selectedMenuId = m.id;
+      resetSelectionsKeepFees();
+      ensureRadioDefaults();
+      save();
+      rerenderAll(true);
+      renderMenuPicker();
+    };
+    menuStrip.appendChild(card);
+  });
+
+  $("menuTitle").textContent = getSelectedMenu()?.name || "원가 계산기";
+}
+
+menuSearch.addEventListener("input", ()=>renderMenuPicker());
+
+/** =========================
+ *  Top controls
+ *  ========================= */
+function renderTopControls(){
+  platformSel.innerHTML = "";
+  Object.keys(cfg.platforms).forEach((k)=>{
+    const opt = document.createElement("option");
+    opt.value = k;
+    opt.textContent = cfg.platforms[k].name;
+    platformSel.appendChild(opt);
+  });
+  platformSel.value = state.platformKey;
+
+  sizeSeg.innerHTML = "";
+  SizeKeys.forEach((s)=>{
+    const b = document.createElement("button");
+    b.className = "segBtn" + (state.size===s ? " active":"");
+    b.textContent = s;
+    b.onclick = ()=>{ state.size=s; ensureRadioDefaults(); save(); rerenderAll(false); };
+    sizeSeg.appendChild(b);
+  });
+
+  couponSel.innerHTML = "";
+  const coupons = [0,1000,2000,3000,4000,5000,6000,7000,8000,9000,10000];
+  coupons.forEach((v)=>{
+    const opt = document.createElement("option");
+    opt.value = String(v);
+    opt.textContent = v===0 ? "쿠폰 없음" : `쿠폰 ${v.toLocaleString()}원`;
+    couponSel.appendChild(opt);
+  });
+  couponSel.value = String(state.coupon);
+
+  extraDeliverySel.innerHTML = "";
+  const extras = [];
+  for(let x=0; x<=5000; x+=500) extras.push(x);
+  extras.forEach((v)=>{
+    const opt = document.createElement("option");
+    opt.value = String(v);
+    opt.textContent = v===0 ? "추가 배달비 없음" : `추가 배달비 ${v.toLocaleString()}원`;
+    extraDeliverySel.appendChild(opt);
+  });
+  extraDeliverySel.value = String(state.storeDeliveryExtra);
+}
+
+platformSel.addEventListener("change",(e)=>{
+  state.platformKey = e.target.value;
+  save(); rerenderAll(false);
+});
+couponSel.addEventListener("change",(e)=>{
+  state.coupon = toNumber(e.target.value,0);
+  save(); rerenderAll(false);
+});
+extraDeliverySel.addEventListener("change",(e)=>{
+  state.storeDeliveryExtra = toNumber(e.target.value,0);
+  save(); rerenderAll(false);
+});
+resetBtn.addEventListener("click",()=>{
+  state.coupon=0;
+  state.storeDeliveryExtra=0;
+  resetSelectionsKeepFees();
+  save(); rerenderAll(true);
+});
+
+function resetSelectionsKeepFees(){
+  state.checked = {};
+  state.qty = {};
+  state.radio = {};
+}
+
+/** =========================
+ *  Options default selections
+ *  ========================= */
+function ensureRadioDefaults(){
+  const must = cfg.optionGroups.filter(g=>g.kind==="radio").map(g=>g.id);
+  must.forEach(gid=>{
+    const list = getOptionsByGroup(gid).filter(o=>o.type==="radio");
+    if(!list.length) return;
+    const cur = state.radio[gid];
+    if(!cur || !list.some(o=>o.id===cur)){
+      state.radio[gid] = list[0].id;
+    }
+  });
+}
+
+/** =========================
+ *  Render option sections (Menu page)
+ *  ========================= */
+function renderSections(){
+  sections.innerHTML = "";
+
+  cfg.optionGroups.forEach(group=>{
+    const list = getOptionsByGroup(group.id);
+    if(!list.length) return;
+
+    const sec = document.createElement("div");
+    sec.className = "card section";
+
+    const head = document.createElement("div");
+    head.className = "secHead";
+    head.innerHTML = `<div class="secTitle">${group.title}</div>
+                      <div class="secSub">${group.subtitle || ""}</div>`;
+    sec.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "optList";
+
+    list.forEach(opt=>{
+      const row = document.createElement("div");
+      row.className = "optRow";
+
+      const left = document.createElement("div");
+      left.style.display="flex";
+      left.style.justifyContent="center";
+
+      const mid = document.createElement("div");
+      const right = document.createElement("div");
+      right.className="rightMini";
+
+      if(opt.type==="radio"){
+        const r = document.createElement("input");
+        r.type="radio";
+        r.name = "rg_"+opt.groupId;
+        r.checked = state.radio[opt.groupId]===opt.id;
+        r.addEventListener("change",()=>{
+          state.radio[opt.groupId]=opt.id;
+          save(); rerenderAll(false);
+        });
+        left.appendChild(r);
+      }else if(opt.type==="check"){
+        const c = document.createElement("input");
+        c.type="checkbox";
+        c.checked = !!state.checked[opt.id];
+        c.addEventListener("change",()=>{
+          const g = getGroupMeta(opt.groupId);
+          if(g && g.kind==="check_limit" && c.checked){
+            const max = g.maxSelect || 99;
+            const checkedInGroup = getOptionsByGroup(opt.groupId).filter(o=>state.checked[o.id]).map(o=>o.id);
+            if(checkedInGroup.length >= max){
+              state.checked[checkedInGroup[0]] = false;
+            }
+          }
+          state.checked[opt.id] = !state.checked[opt.id];
+          save(); rerenderAll(false);
+        });
+        left.appendChild(c);
+      }else if(opt.type==="check_qty"){
+        const c = document.createElement("input");
+        c.type="checkbox";
+        const q = clamp(toNumber(state.qty[opt.id],0),0,opt.maxQty||99);
+        c.checked = q>0;
+        c.addEventListener("change",()=>{
+          state.qty[opt.id] = (q>0 ? 0 : 1);
+          save(); rerenderAll(false);
+        });
+        left.appendChild(c);
+
+        const step = document.createElement("div");
+        step.className="qty";
+        const minus = document.createElement("button");
+        minus.textContent="-";
+        minus.onclick=()=>{ state.qty[opt.id]=clamp(toNumber(state.qty[opt.id],0)-1,0,opt.maxQty||99); save(); rerenderAll(false); };
+        const num = document.createElement("div");
+        num.className="n";
+        num.textContent=String(q);
+        const plus = document.createElement("button");
+        plus.textContent="+";
+        plus.onclick=()=>{ state.qty[opt.id]=clamp(toNumber(state.qty[opt.id],0)+1,0,opt.maxQty||99); save(); rerenderAll(false); };
+        step.append(minus,num,plus);
+        right.appendChild(step);
+      }
+
+      mid.innerHTML = `
+        <div class="optName">${opt.name}</div>
+        <div class="optMeta">+${won(opt.priceDelta)} · 원가 +${won(opt.costDelta)}</div>
+      `;
+
+      row.append(left, mid, right);
+      body.appendChild(row);
+    });
+
+    sec.appendChild(body);
+    sections.appendChild(sec);
+  });
+}
+
+/** =========================
+ *  Calculation
+ *  ========================= */
+function getSelectedLines(){
+  const lines = [];
+
+  Object.keys(state.radio).forEach(gid=>{
+    const id = state.radio[gid];
+    const opt = cfg.options.find(o=>o.id===id && o.enabled!==false);
+    if(opt) lines.push({opt, qty:1});
+  });
+
+  Object.keys(state.checked).forEach(id=>{
+    if(state.checked[id]){
+      const opt = cfg.options.find(o=>o.id===id && o.enabled!==false);
+      if(opt) lines.push({opt, qty:1});
+    }
+  });
+
+  Object.keys(state.qty).forEach(id=>{
+    const opt = cfg.options.find(o=>o.id===id && o.enabled!==false);
+    if(!opt) return;
+    const q = clamp(toNumber(state.qty[id],0),0,(opt.maxQty)||99);
+    if(q>0) lines.push({opt, qty:q});
+  });
+
+  ["TOPPING","SIDE","DRINK"].forEach(gid=>{
+    const g = getGroupMeta(gid);
+    if(!g) return;
+    const max = g.maxSelect || 99;
+    const inGroup = cfg.options.filter(o=>o.enabled!==false && o.groupId===gid && o.type==="check" && state.checked[o.id]);
+    if(inGroup.length>max){
+      inGroup.slice(max).forEach(o=>state.checked[o.id]=false);
+    }
+  });
+
+  return lines;
+}
+
+function calcAll(){
+  const menu = getSelectedMenu();
+  const basePrice = toNumber(menu?.sizes?.[state.size]?.price,0);
+  const baseCost = calcRecipeCost(menu, state.size);
+
+  const lines = getSelectedLines();
+
+  const optPrice = lines.reduce((s,x)=>s + toNumber(x.opt.priceDelta,0)*x.qty,0);
+  const optCost  = lines.reduce((s,x)=>s + toNumber(x.opt.costDelta,0)*x.qty,0);
+
+  const gross = basePrice + optPrice;
+  const net = Math.max(0, gross - toNumber(state.coupon,0));
+  const totalCost = baseCost + optCost;
+
+  const p = cfg.platforms[state.platformKey];
+  const platformFee = net * toNumber(p.platformFeeRate,0);
+  const cardFee = net * toNumber(p.cardFeeRate,0);
+  const delivery = toNumber(p.deliveryFee,0) + toNumber(state.storeDeliveryExtra,0);
+
+  const profit = net - platformFee - cardFee - delivery - totalCost;
+  const marginRate = net>0 ? (profit/net)*100 : 0;
+
+  return {basePrice, baseCost, optPrice, optCost, gross, net, totalCost, platformFee, cardFee, delivery, profit, marginRate, lines};
+}
+
+function renderSummary(){
+  const r = calcAll();
+  $("grossPrice").textContent = won(r.gross);
+  $("netRevenue").textContent = won(r.net);
+  $("totalCost").textContent = won(r.totalCost);
+  $("platformFee").textContent = won(r.platformFee);
+  $("cardFee").textContent = won(r.cardFee);
+  $("deliveryFee").textContent = won(r.delivery);
+
+  $("profitTitle").textContent = `실마진 (${pct(r.marginRate)})`;
+
+  const profitEl = $("profit");
+  profitEl.textContent = won(r.profit);
+  profitEl.className = "sumValue" + (r.profit<0 ? " bad":"");
+
+  $("ctaProfit").textContent = won(r.profit);
+}
+
+function renderOptionProfit(){
+  const r = calcAll();
+  profitRows.innerHTML = "";
+
+  const selected = r.lines.filter(x => x.opt.priceDelta!==0 || x.opt.costDelta!==0 || x.qty>0);
+  if(!selected.length){
+    profitRows.innerHTML = `<div style="color:#6b7280; font-weight:900">선택된 옵션이 없습니다.</div>`;
+    return;
+  }
+
+  selected.forEach(x=>{
+    const p = toNumber(x.opt.priceDelta,0)*x.qty;
+    const c = toNumber(x.opt.costDelta,0)*x.qty;
+    const d = p - c;
+    const box = document.createElement("div");
+    box.className="rowBox";
+    box.innerHTML = `
+      <div>
+        <div style="font-weight:1100">${x.opt.name}${x.qty>1 ? " ×"+x.qty : ""}</div>
+        <div style="font-size:12px; color:#6b7280; font-weight:900">${getGroupMeta(x.opt.groupId)?.title || x.opt.groupId}</div>
+      </div>
+      <div style="text-align:right; font-size:12px; color:#6b7280; font-weight:900">
+        +${won(p)}
+        <div style="margin-top:4px">원가 +${won(c)}</div>
+      </div>
+      <div class="divider"></div>
+      <div class="profit ${d<0 ? "neg":"pos"}" style="text-align:right">${d<0 ? "" : "+"}${won(d)}</div>
+    `;
+    profitRows.appendChild(box);
+  });
+}
+
+/** =========================
+ *  Admin tabs (Endgame)
+ *  ========================= */
+function setTabOn(btn){
+  [tabMenus, tabPlatform, tabOptions, tabIngredients].forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+}
+
+tabMenus.addEventListener("click", ()=>openAdminTab("menus"));
+tabPlatform.addEventListener("click", ()=>openAdminTab("platform"));
+tabOptions.addEventListener("click", ()=>openAdminTab("options"));
+tabIngredients.addEventListener("click", ()=>openAdminTab("ingredients"));
+
+function openAdminTab(which){
+  if(which==="menus"){ setTabOn(tabMenus); renderAdminMenus(); }
+  if(which==="platform"){ setTabOn(tabPlatform); renderAdminPlatform(); }
+  if(which==="options"){ setTabOn(tabOptions); renderAdminOptions(); }
+  if(which==="ingredients"){ setTabOn(tabIngredients); renderAdminIngredients(); }
+}
+
+function renderAdminMenus(){
+  adminPanel.innerHTML = `
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px">
+      <button class="miniBtn" id="addMenuBtn">+ 메뉴 추가</button>
+      <button class="miniBtn" id="setPinBtn">PIN 변경</button>
+      <div class="muted">* 판매가는 수기, 원가는 레시피/단가로 자동 계산</div>
+    </div>
+    <div id="adminMenuList"></div>
+  `;
+
+  $("addMenuBtn").onclick = ()=>{
+    const name = prompt("메뉴명");
+    if(!name) return;
+    cfg.menus.push({
+      id: uid(),
+      name,
+      sizes:{ S:{price:0}, M:{price:0}, L:{price:0} },
+      recipes:{ S:[], M:[], L:[] }
+    });
+    if(!state.selectedMenuId) state.selectedMenuId = cfg.menus[0].id;
+    save(); rerenderAll(true); renderAdminMenus();
+  };
+  $("setPinBtn").onclick = ()=>{
+    const pin = prompt("새 PIN (숫자 4자리 추천)", cfg.adminPin||"0000");
+    if(pin===null) return;
+    cfg.adminPin = String(pin||"0000");
+    save();
+    alert("PIN 저장 완료");
+  };
+
+  const list = $("adminMenuList");
+  list.innerHTML = "";
+
+  cfg.menus.forEach(m=>{
+    const sCost = calcRecipeCost(m,"S");
+    const mCost = calcRecipeCost(m,"M");
+    const lCost = calcRecipeCost(m,"L");
+
+    const box = document.createElement("div");
+    box.className = "card listCard";
+    box.innerHTML = `
+      <div class="listHead">
+        <div class="left">
+          <div class="ttl">${m.name}</div>
+          <div class="meta">
+            원가(S/M/L): ${won(sCost)} / ${won(mCost)} / ${won(lCost)}
+          </div>
+        </div>
+        <div class="listActions">
+          <button class="miniBtn" data-act="select">선택</button>
+          <button class="miniBtn" data-act="recipe">레시피 보기</button>
+          <button class="miniBtn dangerBtn" data-act="del">메뉴삭제</button>
+        </div>
+      </div>
+
+      <div class="adminGrid2" style="margin-top:10px">
+        <div>
+          <div class="muted" style="margin-bottom:6px">S 판매가</div>
+          <input type="number" value="${toNumber(m.sizes.S.price,0)}" data-size="S" />
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">M 판매가</div>
+          <input type="number" value="${toNumber(m.sizes.M.price,0)}" data-size="M" />
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">L 판매가</div>
+          <input type="number" value="${toNumber(m.sizes.L.price,0)}" data-size="L" />
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">메뉴명</div>
+          <input type="text" value="${m.name}" data-field="name" />
+        </div>
+      </div>
+    `;
+
+    const [btnSelect, btnRecipe, btnDel] = box.querySelectorAll("button[data-act]");
+    btnSelect.onclick = ()=>{
+      state.selectedMenuId = m.id;
+      save();
+      alert("현재 메뉴로 선택됨");
+      rerenderAll(true);
+    };
+    btnDel.onclick = ()=>{
+      if(!confirm("이 메뉴를 삭제할까요? (레시피 포함)")) return;
+      cfg.menus = cfg.menus.filter(x=>x.id!==m.id);
+      if(state.selectedMenuId===m.id){
+        state.selectedMenuId = cfg.menus[0]?.id || null;
+      }
+      save();
+      rerenderAll(true);
+      renderAdminMenus();
+    };
+    btnRecipe.onclick = ()=> openRecipeModal(m.id);
+
+    box.querySelectorAll('input[type="number"][data-size]').forEach(inp=>{
+      inp.oninput = (e)=>{
+        const s = e.target.getAttribute("data-size");
+        m.sizes[s].price = toNumber(e.target.value,0);
+        save();
+        rerenderAll(false);
+      };
+    });
+    box.querySelector('input[data-field="name"]').oninput = (e)=>{
+      m.name = e.target.value || "메뉴";
+      save();
+      rerenderAll(true);
+      renderAdminMenus();
+    };
+
+    list.appendChild(box);
+  });
+}
+
+function renderAdminPlatform(){
+  const keys = Object.keys(cfg.platforms);
+  adminPanel.innerHTML = `
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px">
+      <button class="miniBtn" id="advBtn">고급설정</button>
+      <div class="muted">* 플랫폼별 수수료/배달비를 여기서 관리</div>
+    </div>
+    <div id="advBox" class="adminBox" style="display:none">
+      <div style="font-weight:1100; margin-bottom:8px">플랫폼 설정</div>
+      <div class="adminGrid2">
+        <div>
+          <div class="muted" style="margin-bottom:6px">플랫폼 선택</div>
+          <select id="platPick"></select>
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">플랫폼 수수료율 (예: 0.0787)</div>
+          <input type="number" step="0.0001" id="platRate"/>
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">카드 수수료율 (기본 0.03)</div>
+          <input type="number" step="0.0001" id="cardRate"/>
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">기본 배달비</div>
+          <input type="number" id="delivFee"/>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:10px">* 변경 즉시 저장되며 메뉴선택 페이지 계산에 바로 반영됨</div>
+    </div>
+  `;
+
+  const advBtn = $("advBtn");
+  const advBox = $("advBox");
+  advBtn.onclick = ()=>{
+    advBox.style.display = (advBox.style.display==="none" ? "block":"none");
+  };
+
+  const platPick = $("platPick");
+  platPick.innerHTML = keys.map(k=>`<option value="${k}">${cfg.platforms[k].name}</option>`).join("");
+  platPick.value = state.platformKey;
+
+  const platRate = $("platRate");
+  const cardRate = $("cardRate");
+  const delivFee = $("delivFee");
+
+  function syncFields(){
+    const p = cfg.platforms[platPick.value];
+    platRate.value = p.platformFeeRate;
+    cardRate.value = p.cardFeeRate;
+    delivFee.value = p.deliveryFee;
+  }
+  syncFields();
+
+  platPick.onchange = ()=>{
+    state.platformKey = platPick.value;
+    save();
+    syncFields();
+    rerenderAll(false);
+  };
+  platRate.oninput = ()=>{
+    cfg.platforms[platPick.value].platformFeeRate = toNumber(platRate.value,0);
+    save(); rerenderAll(false); renderTopControls();
+  };
+  cardRate.oninput = ()=>{
+    cfg.platforms[platPick.value].cardFeeRate = toNumber(cardRate.value,0);
+    save(); rerenderAll(false);
+  };
+  delivFee.oninput = ()=>{
+    cfg.platforms[platPick.value].deliveryFee = toNumber(delivFee.value,0);
+    save(); rerenderAll(false);
+  };
+}
+
+function renderAdminIngredients(){
+  adminPanel.innerHTML = `
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px">
+      <button class="miniBtn" id="addIngBtn">+ 재료 추가</button>
+      <div class="muted">재료명 / 총 용량(g/p) / 구매가 → g단가 자동 (구매가 ÷ 용량)</div>
+    </div>
+
+    <div class="adminBox">
+      <div class="sheetRow header">
+        <div>재료명</div><div>총 용량</div><div>구매가</div><div>g/p 단가</div><div></div>
+      </div>
+      <div id="ingRows"></div>
+    </div>
+
+    <div class="hint">
+      * 단가 수정은 메뉴선택 페이지에 노출되지 않음<br/>
+      * 레시피 보기에서 재료명을 선택하면 여기 단가가 자동으로 적용됨
+    </div>
+  `;
+
+  const ingRows = $("ingRows");
+  const addIngBtn = $("addIngBtn");
+  addIngBtn.onclick = ()=>{
+    cfg.ingredients.push({ id: uid(), name:"", totalQty:0, buyPrice:0 });
+    save(); renderAdminIngredients(); rerenderAll(false);
+  };
+
+  ingRows.innerHTML = "";
+  cfg.ingredients.forEach((it, idx)=>{
+    const unit = (toNumber(it.totalQty,0) > 0) ? (toNumber(it.buyPrice,0)/toNumber(it.totalQty,0)) : 0;
+
+    const row = document.createElement("div");
+    row.className = "sheetRow";
+    row.innerHTML = `
+      <input type="text" value="${it.name || ""}" placeholder="예: 모짜렐라" />
+      <input type="number" value="${toNumber(it.totalQty,0)}" placeholder="용량(g/p)" />
+      <input type="number" value="${toNumber(it.buyPrice,0)}" placeholder="구매가" />
+      <input type="text" value="${unit ? unit.toFixed(2) : "0"}" disabled />
+      <button class="miniBtn dangerBtn">삭제</button>
+    `;
+
+    const [name, total, buy, _, del] = row.querySelectorAll("input, button");
+    name.oninput = (e)=>{ it.name = e.target.value; save(); rerenderAll(false); };
+    total.oninput = (e)=>{ it.totalQty = toNumber(e.target.value,0); save(); rerenderAll(false); };
+    buy.oninput = (e)=>{ it.buyPrice = toNumber(e.target.value,0); save(); rerenderAll(false); };
+    del.onclick = ()=>{
+      if(!confirm("이 재료를 삭제할까요?")) return;
+      cfg.ingredients.splice(idx,1);
+      save();
+      renderAdminIngredients();
+      rerenderAll(false);
+    };
+
+    ingRows.appendChild(row);
+  });
+}
+
+function renderAdminOptions(){
+  const groups = cfg.optionGroups.map(g=>g.id);
+  adminPanel.innerHTML = `
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px">
+      <button class="miniBtn" id="addOptBtn">+ 옵션 추가</button>
+      <div class="muted">옵션명/그룹/타입/판매가/원가를 Sheet2처럼 관리</div>
+    </div>
+
+    <div class="adminBox">
+      <div class="optSheetRow header" style="color:#6b7280; font-size:12px; font-weight:1000">
+        <div>옵션명</div>
+        <div>그룹</div>
+        <div>타입</div>
+        <div>판매가</div>
+        <div>원가</div>
+        <div class="hideSm">최대수량</div>
+        <div>ON</div>
+        <div></div>
+      </div>
+      <div id="optRows"></div>
+    </div>
+
+    <div class="hint">
+      * 여기서 바꾸면 메뉴선택 페이지 옵션 UI가 즉시 반영됨<br/>
+      * 그룹별 최대 선택(토핑/사이드/음료)은 “그룹 설정”에서 조정(기본값 유지)
+    </div>
+  `;
+
+  $("addOptBtn").onclick = ()=>{
+    cfg.options.push({
+      id: uid(),
+      groupId: "TOPPING",
+      type: "check",
+      name: "새 옵션",
+      priceDelta: 0,
+      costDelta: 0,
+      maxQty: 4,
+      enabled: true
+    });
+    save();
+    renderAdminOptions();
+    rerenderAll(false);
+  };
+
+  const optRows = $("optRows");
+  optRows.innerHTML = "";
+
+  cfg.options.forEach((o, idx)=>{
+    const row = document.createElement("div");
+    row.className = "optSheetRow";
+    row.innerHTML = `
+      <input type="text" value="${o.name||""}" />
+      <select>${groups.map(g=>`<option value="${g}" ${o.groupId===g?"selected":""}>${g}</option>`).join("")}</select>
+      <select>
+        <option value="radio" ${o.type==="radio"?"selected":""}>radio</option>
+        <option value="check" ${o.type==="check"?"selected":""}>check</option>
+        <option value="check_qty" ${o.type==="check_qty"?"selected":""}>qty</option>
+      </select>
+      <input type="number" value="${toNumber(o.priceDelta,0)}" />
+      <input type="number" value="${toNumber(o.costDelta,0)}" />
+      <input class="hideSm" type="number" value="${toNumber(o.maxQty,4)}" />
+      <div style="display:flex; justify-content:center">
+        <input type="checkbox" ${o.enabled!==false ? "checked":""} />
+      </div>
+      <button class="miniBtn dangerBtn">삭제</button>
+    `;
+
+    const els = row.querySelectorAll("input, select, button");
+    const [nameEl, groupEl, typeEl, priceEl, costEl, maxEl, enabledEl, delBtn] = els;
+
+    nameEl.oninput = (e)=>{ o.name = e.target.value; save(); rerenderAll(false); };
+    groupEl.onchange = (e)=>{ o.groupId = e.target.value; save(); ensureRadioDefaults(); rerenderAll(true); };
+    typeEl.onchange = (e)=>{
+      o.type = e.target.value;
+      if(o.type==="check_qty" && !o.maxQty) o.maxQty = 4;
+      save();
+      ensureRadioDefaults();
+      rerenderAll(true);
+      renderAdminOptions();
+    };
+    priceEl.oninput = (e)=>{ o.priceDelta = toNumber(e.target.value,0); save(); rerenderAll(false); };
+    costEl.oninput = (e)=>{ o.costDelta = toNumber(e.target.value,0); save(); rerenderAll(false); };
+    if(maxEl){
+      maxEl.oninput = (e)=>{ o.maxQty = toNumber(e.target.value,4); save(); rerenderAll(false); };
+    }
+    enabledEl.onchange = (e)=>{ o.enabled = !!e.target.checked; save(); ensureRadioDefaults(); rerenderAll(true); };
+
+    delBtn.onclick = ()=>{
+      if(!confirm("이 옵션을 삭제할까요?")) return;
+      cfg.options.splice(idx,1);
+      Object.keys(state.checked).forEach(k=>{ if(k===o.id) delete state.checked[k]; });
+      Object.keys(state.qty).forEach(k=>{ if(k===o.id) delete state.qty[k]; });
+      Object.keys(state.radio).forEach(gid=>{ if(state.radio[gid]===o.id) delete state.radio[gid]; });
+      save();
+      renderAdminOptions();
+      rerenderAll(true);
+    };
+
+    optRows.appendChild(row);
+  });
+}
+
+/** =========================
+ *  Recipe modal
+ *  ========================= */
+function openRecipeModal(menuId){
+  const menu = cfg.menus.find(m=>m.id===menuId);
+  if(!menu) return;
+
+  let curSize = "M";
+
+  const back = document.createElement("div");
+  back.className = "modalBack";
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+
+  modal.innerHTML = `
+    <div class="modalHead">
+      <div class="modalTitle">${menu.name} · 레시피 보기</div>
+      <div style="margin-left:auto; display:flex; gap:8px">
+        <button class="pillBtn" id="closeModalBtn">닫기</button>
+      </div>
+    </div>
+    <div class="modalBody">
+      <div class="sizeBtns" id="modalSizeBtns"></div>
+
+      <div class="adminBox" style="margin:12px 0">
+        <div class="muted" id="recipeCostMeta"></div>
+        <div id="recipeRows"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+          <button class="miniBtn" id="addRecipeRowBtn">+ 재료 추가</button>
+          <button class="miniBtn" id="clearRecipeBtn">이 사이즈 레시피 초기화</button>
+        </div>
+      </div>
+
+      <div class="hint">
+        * 재료명은 “단가 수정”에 등록된 이름과 동일해야 자동 단가가 적용됨<br/>
+        * 용량(g) × g단가 → 메뉴 기본원가(사이즈별) 자동 계산
+      </div>
+    </div>
+  `;
+
+  back.appendChild(modal);
+  document.body.appendChild(back);
+
+  const closeBtn = modal.querySelector("#closeModalBtn");
+  closeBtn.onclick = ()=> back.remove();
+
+  const sizeBtns = modal.querySelector("#modalSizeBtns");
+  function renderSizeBtns(){
+    sizeBtns.innerHTML = "";
+    SizeKeys.forEach(s=>{
+      const b = document.createElement("button");
+      b.textContent = s;
+      b.className = (s===curSize ? "on": "");
+      b.onclick = ()=>{ curSize=s; renderSizeBtns(); renderRows(); };
+      sizeBtns.appendChild(b);
+    });
+  }
+
+  function renderRows(){
+    const recipeRows = modal.querySelector("#recipeRows");
+    recipeRows.innerHTML = "";
+
+    if(!menu.recipes) menu.recipes = {S:[],M:[],L:[]};
+    if(!menu.recipes[curSize]) menu.recipes[curSize] = [];
+
+    const list = menu.recipes[curSize];
+
+    const meta = modal.querySelector("#recipeCostMeta");
+    const cost = calcRecipeCost(menu, curSize);
+    meta.innerHTML = `<b>${curSize}</b> 기본 원가: <b>${won(cost)}</b>`;
+
+    list.forEach((r, idx)=>{
+      const row = document.createElement("div");
+      row.className = "recipeRow";
+
+      const ingSel = document.createElement("select");
+      const ingNames = cfg.ingredients.map(x=>x.name).filter(Boolean);
+      ingSel.innerHTML = ingNames.length
+        ? ingNames.map(n=>`<option value="${n}" ${r.ing===n?"selected":""}>${n}</option>`).join("")
+        : `<option value="">(재료 없음)</option>`;
+      ingSel.value = r.ing || (ingNames[0]||"");
+      ingSel.onchange = (e)=>{ r.ing = e.target.value; save(); rerenderAll(false); renderRows(); };
+
+      const qtyInp = document.createElement("input");
+      qtyInp.type="number";
+      qtyInp.value = toNumber(r.qty,0);
+      qtyInp.placeholder = "용량(g)";
+      qtyInp.oninput = (e)=>{ r.qty = toNumber(e.target.value,0); save(); rerenderAll(false); renderRows(); };
+
+      const lineCost = document.createElement("input");
+      lineCost.type="text";
+      lineCost.disabled = true;
+      lineCost.value = won(toNumber(r.qty,0) * unitPriceByName(r.ing));
+
+      const del = document.createElement("button");
+      del.className = "miniBtn dangerBtn";
+      del.textContent = "삭제";
+      del.onclick = ()=>{
+        list.splice(idx,1);
+        save();
+        rerenderAll(false);
+        renderRows();
+      };
+
+      row.append(ingSel, qtyInp, lineCost, del);
+      recipeRows.appendChild(row);
+    });
+
+    if(!list.length){
+      recipeRows.innerHTML = `<div class="muted" style="font-weight:900">레시피가 비어있습니다. +재료 추가로 입력하세요.</div>`;
+    }
+  }
+
+  modal.querySelector("#addRecipeRowBtn").onclick = ()=>{
+    if(!menu.recipes) menu.recipes = {S:[],M:[],L:[]};
+    if(!menu.recipes[curSize]) menu.recipes[curSize]=[];
+    const firstIng = cfg.ingredients[0]?.name || "";
+    menu.recipes[curSize].push({ ing:firstIng, qty:0 });
+    save();
+    rerenderAll(false);
+    renderRows();
+  };
+
+  modal.querySelector("#clearRecipeBtn").onclick = ()=>{
+    if(!confirm(`${menu.name}의 ${curSize} 레시피를 초기화할까요?`)) return;
+    menu.recipes[curSize] = [];
+    save();
+    rerenderAll(false);
+    renderRows();
+  };
+
+  renderSizeBtns();
+  renderRows();
+}
+
+/** =========================
+ *  Summary toggle (∨)
+ *  ========================= */
+function hookSummaryToggle(){
+  const btn = $("toggleSummaryBtn");
+  const wrap = $("summaryWrap");
+  if(!btn || !wrap) return;
+  btn.onclick = ()=>{
+    wrap.classList.toggle("closed");
+    btn.textContent = wrap.classList.contains("closed") ? "∧" : "∨";
+  };
+}
+
+/** =========================
+ *  Excel upload (xlsx)
+ *  ========================= */
+function hookExcelUpload(){
+  const upBtn = $("excelUploadBtn");
+  const file = $("excelFile");
+  if(!upBtn || !file) return;
+
+  upBtn.onclick = ()=> file.click();
+
+  file.onchange = async (e)=>{
+    const f = e.target.files?.[0];
+    if(!f) return;
+
+    try{
+      const data = await f.arrayBuffer();
+      const wb = XLSX.read(data);
+
+      // MENUS: menu, size, price
+      if(wb.Sheets.Menus){
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets.Menus);
+        const map = new Map();
+        rows.forEach(r=>{
+          const menuName = String(r.menu||"").trim();
+          const size = String(r.size||"").trim().toUpperCase();
+          const price = toNumber(r.price,0);
+          if(!menuName || !["S","M","L"].includes(size)) return;
+
+          if(!map.has(menuName)){
+            map.set(menuName, {
+              id: uid(),
+              name: menuName,
+              sizes:{ S:{price:0}, M:{price:0}, L:{price:0} },
+              recipes:{ S:[], M:[], L:[] }
+            });
+          }
+          map.get(menuName).sizes[size].price = price;
+        });
+        cfg.menus = Array.from(map.values());
+      }
+
+      // INGREDIENTS: name, totalQty, buyPrice
+      if(wb.Sheets.Ingredients){
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets.Ingredients);
+        cfg.ingredients = rows.map(r=>({
+          id: uid(),
+          name: String(r.name||"").trim(),
+          totalQty: toNumber(r.totalQty,0),
+          buyPrice: toNumber(r.buyPrice,0),
+        })).filter(x=>x.name);
+      }
+
+      // RECIPES: menu, size, ingredient, qty
+      if(wb.Sheets.Recipes){
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets.Recipes);
+        rows.forEach(r=>{
+          const menuName = String(r.menu||"").trim();
+          const size = String(r.size||"").trim().toUpperCase();
+          const ing = String(r.ingredient||"").trim();
+          const qty = toNumber(r.qty,0);
+          if(!menuName || !["S","M","L"].includes(size) || !ing) return;
+
+          const m = cfg.menus.find(x=>x.name===menuName);
+          if(!m) return;
+          if(!m.recipes) m.recipes = {S:[],M:[],L:[]};
+          if(!m.recipes[size]) m.recipes[size] = [];
+          m.recipes[size].push({ ing, qty });
+        });
+      }
+
+      // OPTIONS: name, groupId, type, priceDelta, costDelta, maxQty, enabled
+      if(wb.Sheets.Options){
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets.Options);
+        cfg.options = rows.map(r=>({
+          id: uid(),
+          name: String(r.name||"").trim(),
+          groupId: String(r.groupId||"").trim(),
+          type: String(r.type||"check").trim(),
+          priceDelta: toNumber(r.priceDelta,0),
+          costDelta: toNumber(r.costDelta,0),
+          maxQty: toNumber(r.maxQty,4),
+          enabled: (String(r.enabled).trim()==="" ? true : !!r.enabled),
+        })).filter(o=>o.name && o.groupId);
+      }
+
+      // 상태 보정
+      if(!cfg.menus.length){
+        alert("Menus 시트가 비어있거나 형식이 틀렸습니다.");
+        return;
+      }
+      if(!state.selectedMenuId || !cfg.menus.some(m=>m.id===state.selectedMenuId)){
+        state.selectedMenuId = cfg.menus[0].id;
+      }
+
+      save();
+      alert("엑셀 업로드 완료");
+      rerenderAll(true);
+
+    }catch(err){
+      console.error(err);
+      alert("엑셀 업로드 실패: 파일 형식/시트명/컬럼명을 확인하세요.");
+    }finally{
+      file.value = "";
+    }
+  };
+}
+
+/** =========================
+ *  Main rerender
+ *  ========================= */
+function rerenderAll(full=true){
+  if(state.page!=="menu") return;
+
+  $("menuTitle").textContent = getSelectedMenu()?.name || "원가 계산기";
+  renderMenuPicker();
+
+  if(full) renderTopControls();
+  ensureRadioDefaults();
+  renderSections();
+  renderSummary();
+  renderOptionProfit();
+}
+
+function boot(){
+  if(!state.selectedMenuId && cfg.menus[0]) state.selectedMenuId = cfg.menus[0].id;
+
+  setPage(state.page || "menu");
+
+  renderMenuPicker();
+  renderTopControls();
+  ensureRadioDefaults();
+  rerenderAll(true);
+
+  hookSummaryToggle();
+  hookExcelUpload();
+}
+
+boot();
+</script>
+</body>
+</html>
