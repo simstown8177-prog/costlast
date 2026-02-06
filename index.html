@@ -796,12 +796,12 @@ function renderTopControls(){
     b.className = "segBtn" + (state.size===s ? " active":"");
     b.textContent = s;
     b.onclick = ()=>{
-  state.size = s;
-  ensureRadioDefaults();
-  save();
-  renderTopControls();   // 🔥 이 줄이 핵심
-  rerenderAll(false);
-};
+      state.size = s;
+      ensureRadioDefaults();
+      save();
+      renderTopControls();   // ✅ 사이즈 버튼 active 반영
+      rerenderAll(false);
+    };
     sizeSeg.appendChild(b);
   });
 
@@ -1083,7 +1083,7 @@ function renderOptionProfit(){
 }
 
 /** =========================
- *  Admin tabs (Endgame)
+ *  Admin tabs
  *  ========================= */
 function setTabOn(btn){
   [tabMenus, tabPlatform, tabOptions, tabIngredients].forEach(b=>b.classList.remove("on"));
@@ -1122,7 +1122,8 @@ function renderAdminMenus(){
       recipes:{ S:[], M:[], L:[] }
     });
     if(!state.selectedMenuId) state.selectedMenuId = cfg.menus[0].id;
-    save(); rerenderAll(true); renderAdminMenus();
+    save();
+    renderAdminMenus();
   };
   $("setPinBtn").onclick = ()=>{
     const pin = prompt("새 PIN (숫자 4자리 추천)", cfg.adminPin||"0000");
@@ -1182,7 +1183,6 @@ function renderAdminMenus(){
       state.selectedMenuId = m.id;
       save();
       alert("현재 메뉴로 선택됨");
-      rerenderAll(true);
     };
     btnDel.onclick = ()=>{
       if(!confirm("이 메뉴를 삭제할까요? (레시피 포함)")) return;
@@ -1191,7 +1191,6 @@ function renderAdminMenus(){
         state.selectedMenuId = cfg.menus[0]?.id || null;
       }
       save();
-      rerenderAll(true);
       renderAdminMenus();
     };
     btnRecipe.onclick = ()=> openRecipeModal(m.id);
@@ -1201,13 +1200,11 @@ function renderAdminMenus(){
         const s = e.target.getAttribute("data-size");
         m.sizes[s].price = toNumber(e.target.value,0);
         save();
-        rerenderAll(false);
       };
     });
     box.querySelector('input[data-field="name"]').oninput = (e)=>{
       m.name = e.target.value || "메뉴";
       save();
-      rerenderAll(true);
       renderAdminMenus();
     };
 
@@ -1272,19 +1269,18 @@ function renderAdminPlatform(){
     state.platformKey = platPick.value;
     save();
     syncFields();
-    rerenderAll(false);
   };
   platRate.oninput = ()=>{
     cfg.platforms[platPick.value].platformFeeRate = toNumber(platRate.value,0);
-    save(); rerenderAll(false); renderTopControls();
+    save();
   };
   cardRate.oninput = ()=>{
     cfg.platforms[platPick.value].cardFeeRate = toNumber(cardRate.value,0);
-    save(); rerenderAll(false);
+    save();
   };
   delivFee.oninput = ()=>{
     cfg.platforms[platPick.value].deliveryFee = toNumber(delivFee.value,0);
-    save(); rerenderAll(false);
+    save();
   };
 }
 
@@ -1312,7 +1308,7 @@ function renderAdminIngredients(){
   const addIngBtn = $("addIngBtn");
   addIngBtn.onclick = ()=>{
     cfg.ingredients.push({ id: uid(), name:"", totalQty:0, buyPrice:0 });
-    save(); renderAdminIngredients(); rerenderAll(false);
+    save(); renderAdminIngredients();
   };
 
   ingRows.innerHTML = "";
@@ -1330,15 +1326,14 @@ function renderAdminIngredients(){
     `;
 
     const [name, total, buy, _, del] = row.querySelectorAll("input, button");
-    name.oninput = (e)=>{ it.name = e.target.value; save(); rerenderAll(false); };
-    total.oninput = (e)=>{ it.totalQty = toNumber(e.target.value,0); save(); rerenderAll(false); };
-    buy.oninput = (e)=>{ it.buyPrice = toNumber(e.target.value,0); save(); rerenderAll(false); };
+    name.oninput = (e)=>{ it.name = e.target.value; save(); };
+    total.oninput = (e)=>{ it.totalQty = toNumber(e.target.value,0); save(); };
+    buy.oninput = (e)=>{ it.buyPrice = toNumber(e.target.value,0); save(); };
     del.onclick = ()=>{
       if(!confirm("이 재료를 삭제할까요?")) return;
       cfg.ingredients.splice(idx,1);
       save();
       renderAdminIngredients();
-      rerenderAll(false);
     };
 
     ingRows.appendChild(row);
@@ -1386,7 +1381,6 @@ function renderAdminOptions(){
     });
     save();
     renderAdminOptions();
-    rerenderAll(false);
   };
 
   const optRows = $("optRows");
@@ -1415,22 +1409,21 @@ function renderAdminOptions(){
     const els = row.querySelectorAll("input, select, button");
     const [nameEl, groupEl, typeEl, priceEl, costEl, maxEl, enabledEl, delBtn] = els;
 
-    nameEl.oninput = (e)=>{ o.name = e.target.value; save(); rerenderAll(false); };
-    groupEl.onchange = (e)=>{ o.groupId = e.target.value; save(); ensureRadioDefaults(); rerenderAll(true); };
+    nameEl.oninput = (e)=>{ o.name = e.target.value; save(); };
+    groupEl.onchange = (e)=>{ o.groupId = e.target.value; save(); ensureRadioDefaults(); };
     typeEl.onchange = (e)=>{
       o.type = e.target.value;
       if(o.type==="check_qty" && !o.maxQty) o.maxQty = 4;
       save();
       ensureRadioDefaults();
-      rerenderAll(true);
       renderAdminOptions();
     };
-    priceEl.oninput = (e)=>{ o.priceDelta = toNumber(e.target.value,0); save(); rerenderAll(false); };
-    costEl.oninput = (e)=>{ o.costDelta = toNumber(e.target.value,0); save(); rerenderAll(false); };
+    priceEl.oninput = (e)=>{ o.priceDelta = toNumber(e.target.value,0); save(); };
+    costEl.oninput = (e)=>{ o.costDelta = toNumber(e.target.value,0); save(); };
     if(maxEl){
-      maxEl.oninput = (e)=>{ o.maxQty = toNumber(e.target.value,4); save(); rerenderAll(false); };
+      maxEl.oninput = (e)=>{ o.maxQty = toNumber(e.target.value,4); save(); };
     }
-    enabledEl.onchange = (e)=>{ o.enabled = !!e.target.checked; save(); ensureRadioDefaults(); rerenderAll(true); };
+    enabledEl.onchange = (e)=>{ o.enabled = !!e.target.checked; save(); ensureRadioDefaults(); };
 
     delBtn.onclick = ()=>{
       if(!confirm("이 옵션을 삭제할까요?")) return;
@@ -1440,7 +1433,6 @@ function renderAdminOptions(){
       Object.keys(state.radio).forEach(gid=>{ if(state.radio[gid]===o.id) delete state.radio[gid]; });
       save();
       renderAdminOptions();
-      rerenderAll(true);
     };
 
     optRows.appendChild(row);
@@ -1529,13 +1521,13 @@ function openRecipeModal(menuId){
         ? ingNames.map(n=>`<option value="${n}" ${r.ing===n?"selected":""}>${n}</option>`).join("")
         : `<option value="">(재료 없음)</option>`;
       ingSel.value = r.ing || (ingNames[0]||"");
-      ingSel.onchange = (e)=>{ r.ing = e.target.value; save(); rerenderAll(false); renderRows(); };
+      ingSel.onchange = (e)=>{ r.ing = e.target.value; save(); renderRows(); };
 
       const qtyInp = document.createElement("input");
       qtyInp.type="number";
       qtyInp.value = toNumber(r.qty,0);
       qtyInp.placeholder = "용량(g)";
-      qtyInp.oninput = (e)=>{ r.qty = toNumber(e.target.value,0); save(); rerenderAll(false); renderRows(); };
+      qtyInp.oninput = (e)=>{ r.qty = toNumber(e.target.value,0); save(); renderRows(); };
 
       const lineCost = document.createElement("input");
       lineCost.type="text";
@@ -1548,7 +1540,6 @@ function openRecipeModal(menuId){
       del.onclick = ()=>{
         list.splice(idx,1);
         save();
-        rerenderAll(false);
         renderRows();
       };
 
@@ -1567,7 +1558,6 @@ function openRecipeModal(menuId){
     const firstIng = cfg.ingredients[0]?.name || "";
     menu.recipes[curSize].push({ ing:firstIng, qty:0 });
     save();
-    rerenderAll(false);
     renderRows();
   };
 
@@ -1575,7 +1565,6 @@ function openRecipeModal(menuId){
     if(!confirm(`${menu.name}의 ${curSize} 레시피를 초기화할까요?`)) return;
     menu.recipes[curSize] = [];
     save();
-    rerenderAll(false);
     renderRows();
   };
 
@@ -1692,6 +1681,8 @@ function hookExcelUpload(){
 
       save();
       alert("엑셀 업로드 완료");
+      // 업로드 후 메뉴 페이지에서 바로 반영되게
+      setPage("menu");
       rerenderAll(true);
 
     }catch(err){
@@ -1737,4 +1728,3 @@ boot();
 </script>
 </body>
 </html>
-
